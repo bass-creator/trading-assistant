@@ -21,6 +21,9 @@ if st.button("Get Signal"):
         if data.empty:
             st.error(f"No data found for {symbol}. Try another symbol.")
         else:
+            # Ensure the 'Close' column is a 1D series and apply indicators
+            data['Close'] = data['Close'].squeeze()  # Ensure Close is 1D
+
             # Apply indicators
             data["RSI"] = ta.momentum.RSIIndicator(data["Close"], window=14).rsi()
             data["SMA"] = ta.trend.SMAIndicator(data["Close"], window=20).sma_indicator()
