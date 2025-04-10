@@ -21,18 +21,21 @@ if st.button("Get Signal"):
         if data.empty:
             st.error(f"No data found for {symbol}. Try another symbol.")
         else:
-            # Ensure 'Close' column is 1D and drop any NaN rows before calculation
-            data = data[['Close']].dropna()
-            data['Close'] = data['Close'].squeeze()  # Ensure it's a 1D array
-            
-            # Apply indicators
-            rsi = ta.momentum.RSIIndicator(data['Close'], window=14)
+            # Ensure 'Close' is 1-dimensional and handle NaN values
+            data = data[['Close']].dropna()  # Only 'Close' column, drop NaN rows
+
+            # Ensure the 'Close' column is a 1D series
+            close_data = data['Close'].values.flatten()  # Convert to 1D numpy array
+
+            # Apply RSI Indicator
+            rsi = ta.momentum.RSIIndicator(close_data, window=14)
             data["RSI"] = rsi.rsi()
 
-            sma = ta.trend.SMAIndicator(data['Close'], window=20)
+            # Apply SMA Indicator
+            sma = ta.trend.SMAIndicator(close_data, window=20)
             data["SMA"] = sma.sma_indicator()
 
-            # Generate signals
+            # Generate Buy/Sell signals
             buy = (data["RSI"] < 30) & (data["Close"] > data["SMA"])
             sell = (data["RSI"] > 70) & (data["Close"] < data["SMA"])
             data["Signal"] = "HOLD"
