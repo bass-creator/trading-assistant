@@ -21,17 +21,14 @@ if st.button("Get Signal"):
         if data.empty:
             st.error(f"No data found for {symbol}. Try another symbol.")
         else:
-            # Ensure 'Close' is 1-dimensional and handle NaN values
-            data = data[['Close']].dropna()  # Only 'Close' column, drop NaN rows
+            # Ensure 'Close' is extracted as a 1-dimensional array
+            close_data = data['Close'].dropna().values.flatten()  # Flatten into 1D numpy array
 
-            # Explicitly convert to 1D Series (if necessary)
-            close_data = data['Close']
-
-            # Apply RSI Indicator
+            # Apply RSI Indicator directly to the 1D numpy array
             rsi = ta.momentum.RSIIndicator(close_data, window=14)
             data["RSI"] = rsi.rsi()
 
-            # Apply SMA Indicator
+            # Apply SMA Indicator directly to the 1D numpy array
             sma = ta.trend.SMAIndicator(close_data, window=20)
             data["SMA"] = sma.sma_indicator()
 
