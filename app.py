@@ -13,7 +13,6 @@ st.title("AI Trading Assistant (RSI + SMA Strategy)")
 symbol = st.text_input("Enter Stock Symbol", value="AAPL")
 
 if st.button("Get Signal"):
-if st.button("Get Signal"):
     try:
         # Fetch data from Yahoo Finance
         data = yf.download(symbol, period="6mo", interval="1d")
