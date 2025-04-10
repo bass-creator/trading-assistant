@@ -24,14 +24,14 @@ if st.button("Get Signal"):
             # Ensure 'Close' is 1-dimensional and handle NaN values
             data = data[['Close']].dropna()  # Only 'Close' column, drop NaN rows
 
-            # Ensure 'Close' column is a Pandas Series
+            # Explicitly convert to 1D Series (if necessary)
             close_data = data['Close']
 
-            # Apply RSI Indicator (with Pandas Series directly)
+            # Apply RSI Indicator
             rsi = ta.momentum.RSIIndicator(close_data, window=14)
             data["RSI"] = rsi.rsi()
 
-            # Apply SMA Indicator (with Pandas Series directly)
+            # Apply SMA Indicator
             sma = ta.trend.SMAIndicator(close_data, window=20)
             data["SMA"] = sma.sma_indicator()
 
