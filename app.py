@@ -15,19 +15,36 @@ if st.button("Get Signal"):
     try:
         st.write(f"Fetching data for {symbol.upper()}...")
         data = yf.download(symbol, period="6mo", interval="1d")
-        
+
         if data.empty:
             st.error(f"No data found for {symbol}. Try another symbol.")
         else:
-            close_series = data[['Close']].copy()  # Keep as DataFrame for compatibility
-            close_series = close_series.droplevel(axis=1, level=0) if isinstance(close_series.columns, pd.MultiIndex) else close_series
+            st.subheader("Raw data:")
+            st.dataframe(data.tail())
 
-            # Flatten Close to Series
-            close_series = close_series.squeeze()  # Works if it's a one-column DataFrame
+            # Drop missing values from Close and squeeze to Series
+            close_series = data[['Close']].dropna().squeeze()
 
-            # Calculate RSI and SMA
-            data['RSI'] = ta.momentum.RSIIndicator(close_series, window=14).rsi()
-            data['SMA'] = ta.trend.SMAIndicator(close_series, window=20).sma_indicator()
+            st.subheader("Close series:")
+            st.text(type(close_series))
+            st.dataframe(close_series.tail())
+
+            # Compute RSI and SMA with the same index
+            rsi = ta.momentum.RSIIndicator(close_series, window=14).rsi()
+            sma = ta.trend.SMAIndicator(close_series, window=20).sma_indicator()
+
+            # Align the indicators to ensure same index
+            rsi, sma = rsi.align(sma, join='inner')
+            close_aligned = close_series.loc[rsi.index]  # Align Close to RSI index
+            data = data.loc[rsi.index]  # Truncate original data as well
+
+            # Add indicators back to the data
+            data["Close"] = close_aligned
+            data["RSI"] = rsi
+            data["SMA"] = sma
+
+            st.subheader("With indicators:")
+            st.dataframe(data[["Close", "RSI", "SMA"]].tail())
 
             # Signal logic
             buy = (data['RSI'] < 30) & (data['Close'] > data['SMA'])
@@ -36,7 +53,13 @@ if st.button("Get Signal"):
             data.loc[buy, "Signal"] = "BUY"
             data.loc[sell, "Signal"] = "SELL"
 
-            latest = data.dropna().iloc[-1]
+            st.subheader("Buy condition:")
+            st.dataframe(buy.tail())
+
+            st.subheader("Sell condition:")
+            st.dataframe(sell.tail())
+
+            latest = data.iloc[-1]
 
             st.markdown(f"### Latest Signal for **{symbol.upper()}**: `{latest['Signal']}`")
             st.markdown(f"**Close:** {latest['Close']:.2f} | **RSI:** {latest['RSI']:.2f} | **SMA:** {latest['SMA']:.2f}")
