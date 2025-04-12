@@ -6,7 +6,6 @@ import ta
 import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="RSI & SMA Assistant", layout="centered")
-
 st.title("AI Trading Assistant (RSI + SMA Strategy)")
 
 # Stock input
@@ -17,19 +16,17 @@ if st.button("Get Signal"):
         # Fetch data from Yahoo Finance
         data = yf.download(symbol, period="6mo", interval="1d")
         
-        # Check if data is fetched successfully
         if data.empty:
             st.error(f"No data found for {symbol}. Try another symbol.")
         else:
-            # Ensure 'Close' is extracted as a 1-dimensional array
-            close_data = data['Close'].dropna().values.flatten()  # Flatten into 1D numpy array
+            # Ensure 'Close' is a proper pandas Series
+            close_series = data['Close'].dropna()
 
-            # Apply RSI Indicator directly to the 1D numpy array
-            rsi = ta.momentum.RSIIndicator(close_data, window=14)
+            # Compute RSI and SMA using Series (NOT np arrays)
+            rsi = ta.momentum.RSIIndicator(close_series, window=14)
             data["RSI"] = rsi.rsi()
 
-            # Apply SMA Indicator directly to the 1D numpy array
-            sma = ta.trend.SMAIndicator(close_data, window=20)
+            sma = ta.trend.SMAIndicator(close_series, window=20)
             data["SMA"] = sma.sma_indicator()
 
             # Generate Buy/Sell signals
@@ -39,8 +36,9 @@ if st.button("Get Signal"):
             data.loc[buy, "Signal"] = "BUY"
             data.loc[sell, "Signal"] = "SELL"
 
-            latest = data.iloc[-1]
+            latest = data.dropna().iloc[-1]
             st.markdown(f"### Latest Signal for **{symbol.upper()}**: `{latest['Signal']}`")
+            st.markdown(f"**Closing Price:** {latest['Close']:.2f} | **RSI:** {latest['RSI']:.2f} | **SMA:** {latest['SMA']:.2f}")
 
             # Plot charts
             st.subheader("Price & SMA")
@@ -50,7 +48,7 @@ if st.button("Get Signal"):
             ax1.legend()
             st.pyplot(fig1)
 
-            # Show RSI chart
+            # RSI chart
             st.subheader("RSI")
             fig2, ax2 = plt.subplots()
             ax2.plot(data["RSI"], color="purple")
