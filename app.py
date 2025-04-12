@@ -8,57 +8,56 @@ st.set_page_config(page_title="RSI & SMA Assistant", layout="centered")
 
 st.title("AI Trading Assistant (RSI + SMA Strategy)")
 
-# Input
+# Stock input
 symbol = st.text_input("Enter Stock Symbol", value="AAPL")
 
 if st.button("Get Signal"):
     try:
+        # Fetch data from Yahoo Finance
         data = yf.download(symbol, period="6mo", interval="1d")
-
+        
+        # Check if data is fetched successfully
         if data.empty:
-            st.error(f"No data found for {symbol}")
+            st.error(f"No data found for {symbol}. Try another symbol.")
         else:
-            # Extract close series directly as a Series (not ndarray!)
-            close_series = data["Close"].dropna()
+            # Ensure 'Close' is extracted as a 1-dimensional series
+            close_series = pd.Series(data["Close"].dropna(), name="Close")
+            
+            # Debugging: Check the shape of the close_series
+            st.write(f"Close shape: {close_series.shape}")
+            
+            # Apply RSI Indicator directly to the 1D series
+            rsi = ta.momentum.RSIIndicator(close_series, window=14)
+            data["RSI"] = rsi.rsi()
 
-            # Apply indicators
-            rsi_series = ta.momentum.RSIIndicator(close_series, window=14).rsi()
-            sma_series = ta.trend.SMAIndicator(close_series, window=20).sma_indicator()
+            # Apply SMA Indicator directly to the 1D series
+            sma = ta.trend.SMAIndicator(close_series, window=20)
+            data["SMA"] = sma.sma_indicator()
 
-            # Align everything on the same index
-            data = pd.DataFrame({
-                "Close": close_series,
-                "RSI": rsi_series,
-                "SMA": sma_series
-            }).dropna()
-
-            # DEBUG OUTPUT
-            st.subheader("Debug Data Snapshot")
-            st.write(data.tail())
-
-            # Signals
+            # Generate Buy/Sell signals
+            buy = (data["RSI"] < 30) & (data["Close"] > data["SMA"])
+            sell = (data["RSI"] > 70) & (data["Close"] < data["SMA"])
             data["Signal"] = "HOLD"
-            data.loc[(data["RSI"] < 30) & (data["Close"] > data["SMA"]), "Signal"] = "BUY"
-            data.loc[(data["RSI"] > 70) & (data["Close"] < data["SMA"]), "Signal"] = "SELL"
+            data.loc[buy, "Signal"] = "BUY"
+            data.loc[sell, "Signal"] = "SELL"
 
             latest = data.iloc[-1]
             st.markdown(f"### Latest Signal for **{symbol.upper()}**: `{latest['Signal']}`")
-            st.markdown(f"**Closing Price:** {latest['Close']:.2f} | **RSI:** {latest['RSI']:.2f} | **SMA:** {latest['SMA']:.2f}")
 
-            # Charts
+            # Plot charts
             st.subheader("Price & SMA")
             fig1, ax1 = plt.subplots()
             ax1.plot(data["Close"], label="Price")
-            ax1.plot(data["SMA"], label="SMA (20)", linestyle="--")
+            ax1.plot(data["SMA"], label="20-Day SMA", linestyle="--")
             ax1.legend()
             st.pyplot(fig1)
 
-            st.subheader("RSI Chart")
+            # Show RSI chart
+            st.subheader("RSI")
             fig2, ax2 = plt.subplots()
-            ax2.plot(data["RSI"], label="RSI", color="purple")
+            ax2.plot(data["RSI"], color="purple")
             ax2.axhline(70, color="red", linestyle="--")
             ax2.axhline(30, color="green", linestyle="--")
-            ax2.legend()
             st.pyplot(fig2)
 
     except Exception as e:
