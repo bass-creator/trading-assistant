@@ -1,3 +1,4 @@
+# Streamlit RSI + SMA Trading Assistant
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -5,7 +6,6 @@ import ta
 import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="RSI & SMA Assistant", layout="centered")
-
 st.title("AI Trading Assistant (RSI + SMA Strategy)")
 
 # Stock input
@@ -13,51 +13,50 @@ symbol = st.text_input("Enter Stock Symbol", value="AAPL")
 
 if st.button("Get Signal"):
     try:
-        # Fetch data from Yahoo Finance
+        st.info(f"Fetching data for {symbol.upper()}...")
         data = yf.download(symbol, period="6mo", interval="1d")
-        
-        # Check if data is fetched successfully
+
         if data.empty:
-            st.error(f"No data found for {symbol}. Try another symbol.")
+            st.error(f"No data found for {symbol.upper()}. Try another symbol.")
         else:
-            # Ensure 'Close' is extracted as a 1-dimensional series
-            close_series = pd.Series(data["Close"].dropna(), name="Close")
-            
-            # Debugging: Check the shape of the close_series
-            st.write(f"Close shape: {close_series.shape}")
-            
-            # Apply RSI Indicator directly to the 1D series
-            rsi = ta.momentum.RSIIndicator(close_series, window=14)
+            # Use 'Close' column as-is (just drop NAs)
+            close = data["Close"].dropna()
+
+            # Calculate RSI and SMA
+            rsi = ta.momentum.RSIIndicator(close, window=14)
             data["RSI"] = rsi.rsi()
 
-            # Apply SMA Indicator directly to the 1D series
-            sma = ta.trend.SMAIndicator(close_series, window=20)
+            sma = ta.trend.SMAIndicator(close, window=20)
             data["SMA"] = sma.sma_indicator()
 
-            # Generate Buy/Sell signals
+            # Generate signals
             buy = (data["RSI"] < 30) & (data["Close"] > data["SMA"])
             sell = (data["RSI"] > 70) & (data["Close"] < data["SMA"])
             data["Signal"] = "HOLD"
             data.loc[buy, "Signal"] = "BUY"
             data.loc[sell, "Signal"] = "SELL"
 
-            latest = data.iloc[-1]
+            latest = data.dropna().iloc[-1]
             st.markdown(f"### Latest Signal for **{symbol.upper()}**: `{latest['Signal']}`")
+            st.write(f"**Closing Price:** {latest['Close']:.2f}")
+            st.write(f"**RSI:** {latest['RSI']:.2f}")
+            st.write(f"**SMA:** {latest['SMA']:.2f}")
 
-            # Plot charts
+            # Plot price and SMA
             st.subheader("Price & SMA")
             fig1, ax1 = plt.subplots()
-            ax1.plot(data["Close"], label="Price")
+            ax1.plot(data["Close"], label="Close Price")
             ax1.plot(data["SMA"], label="20-Day SMA", linestyle="--")
             ax1.legend()
             st.pyplot(fig1)
 
-            # Show RSI chart
+            # Plot RSI
             st.subheader("RSI")
             fig2, ax2 = plt.subplots()
-            ax2.plot(data["RSI"], color="purple")
+            ax2.plot(data["RSI"], label="RSI", color="purple")
             ax2.axhline(70, color="red", linestyle="--")
             ax2.axhline(30, color="green", linestyle="--")
+            ax2.legend()
             st.pyplot(fig2)
 
     except Exception as e:
